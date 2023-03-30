@@ -1,0 +1,8 @@
+.idea
+
+# 非项目文件
+workshop**
+/*.*
+
+**/exported/**/*.zip
+**/anim/*.zip
