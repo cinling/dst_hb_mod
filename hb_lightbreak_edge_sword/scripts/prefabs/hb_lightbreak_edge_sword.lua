@@ -89,4 +89,4 @@ local function fn()
     return inst
 end
 
-return Prefab("hb_lightbreak_edge_sword", fn, assets)
+return Prefab("common/inventory/hb_lightbreak_edge_sword", fn, assets)
