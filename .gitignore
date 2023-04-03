@@ -3,6 +3,9 @@
 # 非项目文件
 workshop**
 /*.*
+lesson_quick_start_finish
 
 **/exported/**/*.zip
 **/anim/*.zip
+**/*.tex
+**/*.xml
