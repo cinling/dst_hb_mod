@@ -26,9 +26,9 @@ local assets =
 }
 
 -- 最大耐久度
-local HB_LIGHTBREAK_EDGE_USES_MAX = 100
+local HB_LIGHTBREAK_EDGE_USES_MAX = 400
 -- 初始化耐久度
-local HB_LIGHTBREAK_EDGE_USES_INIT = 60
+local HB_LIGHTBREAK_EDGE_USES_INIT = 240
 
 -- 斩味
 local HB_SHARPNESS = {
@@ -83,7 +83,7 @@ local function OnPercentUsedChange(inst, data)
     ResetPropByUses(inst)
 end
 
-local function onequip(inst, owner)
+local function OnEquip(inst, owner)
     --local skin_build = inst:GetSkinBuild()
     --if skin_build ~= nil then
     --    owner:PushEvent("equipskinneditem", inst:GetSkinName())
@@ -101,7 +101,7 @@ local function onequip(inst, owner)
     owner.DynamicShadow:SetSize(1.7, 1) -- 设置阴影大小，你可以仔细观察装备荷叶伞时，人物脚下的阴影变化
 end
 
-local function onunequip(inst, owner)
+local function OnUnequip(inst, owner)
     --owner.AnimState:Hide("ARM_carry")
     --owner.AnimState:Show("ARM_normal")
     --local skin_build = inst:GetSkinBuild()
@@ -125,6 +125,7 @@ local function fn()
     inst.entity:AddTransform()
     inst.entity:AddAnimState()
     inst.entity:AddNetwork()
+    inst.entity:AddLight() -- 光源（仅地面）
 
     MakeInventoryPhysics(inst)
 
@@ -142,6 +143,13 @@ local function fn()
 
     inst.entity:SetPristine()
 
+    -- 光源处理（丢到地面时发光）
+    inst.Light:Enable(true)
+    inst.Light:SetRadius(1) -- 光源半径
+    inst.Light:SetIntensity(0.9) -- 光源亮度 [0,1]
+    inst.Light:SetFalloff(0.8) -- 光源衰减强度 [0.1]
+    inst.Light:SetColour(1, 0.611, 0) -- r,g,b 光源颜色 [0,1]
+
     ---------------------- 主客机分界代码 -------------------------
     if not TheWorld.ismastersim then
         return inst
@@ -149,30 +157,48 @@ local function fn()
 
     -- 武器
     inst:AddComponent("weapon")
+    -- 伤害由斩味相关进行设置，这里不进行设置。详情可参考:ResetPropByUses
 
     -- 工具
     inst:AddComponent("tool")
+    inst.components.tool:SetAction(ACTIONS.CHOP) -- 允许砍（威力和斩味相关，因此不设置，仅声明）
+    inst.components.tool:SetAction(ACTIONS.DIG) -- 允许 挖（铲）
+    inst.components.tool:SetAction(ACTIONS.HAMMER, 0.5) -- 允许 锤。威力0.5
+    inst.components.tool:SetAction(ACTIONS.MINE, 0.5) -- 允许 挖矿。威力0.5
 
-    -------
+    -- 园艺锄 组件
+    inst:AddComponent("farmtiller")
 
-    -- 耐久度
+    -- 耐久度 组件
     inst:AddComponent("finiteuses")
     inst.components.finiteuses:SetMaxUses(HB_LIGHTBREAK_EDGE_USES_MAX)
     inst.components.finiteuses:SetUses(HB_LIGHTBREAK_EDGE_USES_INIT)
     inst.components.finiteuses:SetOnFinished(OnFinishedUses)
-    inst.components.finiteuses:SetConsumption(ACTIONS.CHOP, 1) -- 砍树消耗1耐久度
-    ResetPropByUses(inst)
+    inst.components.finiteuses:SetConsumption(ACTIONS.ATTACK, 1) -- 攻击 耐久度消耗
+    inst.components.finiteuses:SetConsumption(ACTIONS.CHOP, 1) -- 砍 耐久度消耗
+    inst.components.finiteuses:SetConsumption(ACTIONS.DIG, 2) -- 挖（铲） 耐久度消耗
+    inst.components.finiteuses:SetConsumption(ACTIONS.HAMMER, 5) -- 锤 耐久度消耗
+    inst.components.finiteuses:SetConsumption(ACTIONS.MINE, 10) -- 采矿 耐久度消耗
+    inst.components.finiteuses:SetConsumption(ACTIONS.TILL, 1) -- 锄 耐久度消耗
 
+    -- 燃料组件
+    --inst:AddComponent("fueled")
+    --inst.components.fueled.fueltype = FUELTYPE.BURNABLE
+
+    -- 可查看 组件
     inst:AddComponent("inspectable")
 
+    -- 物品图标
     inst:AddComponent("inventoryitem")
     inst.components.inventoryitem.atlasname = "images/inventoryimages/hb_lightbreak_edge_sword.xml" -- 物品来图片
 
+    -- 可装备 组件
     inst:AddComponent("equippable")
-    inst.components.equippable:SetOnEquip(onequip)
-    inst.components.equippable:SetOnUnequip(onunequip)
+    inst.components.equippable:SetOnEquip(OnEquip)
+    inst.components.equippable:SetOnUnequip(OnUnequip)
 
-    MakeHauntableLaunch(inst)
+    --MakeHauntableLaunch(inst) -- 不确定有什么作用
+    ResetPropByUses(inst)
 
     -- 监听事件
     inst:ListenForEvent("percentusedchange", OnPercentUsedChange) -- 耐久度变更
